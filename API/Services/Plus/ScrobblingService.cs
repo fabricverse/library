@@ -930,6 +930,7 @@ public class ScrobblingService : IScrobblingService
 
             if (await _unitOfWork.ExternalSeriesMetadataRepository.IsBlacklistedSeries(evt.SeriesId))
             {
+                _logger.LogInformation("Series {SeriesName} ({SeriesId}) can't be matched and thus cannot scrobble this event", evt.Series.Name, evt.SeriesId);
                 _unitOfWork.ScrobbleRepository.Attach(new ScrobbleError()
                 {
                     Comment = UnknownSeriesErrorMessage,
@@ -942,6 +943,7 @@ public class ScrobblingService : IScrobblingService
                 evt.ProcessDateUtc = DateTime.UtcNow;
                 _unitOfWork.ScrobbleRepository.Update(evt);
                 await _unitOfWork.CommitAsync();
+
                 return 0;
             }
 

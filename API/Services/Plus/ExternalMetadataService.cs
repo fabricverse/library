@@ -49,7 +49,7 @@ public interface IExternalMetadataService
 
     Task<IList<MalStackDto>> GetStacksForUser(int userId);
     Task<IList<ExternalSeriesMatchDto>> MatchSeries(MatchSeriesDto dto);
-    Task FixSeriesMatch(int seriesId, int anilistId);
+    Task FixSeriesMatch(int seriesId, int anilistId, long? malId);
     Task UpdateSeriesDontMatch(int seriesId, bool dontMatch);
     Task<bool> WriteExternalMetadataToSeries(ExternalSeriesDetailDto externalMetadata, int seriesId);
 }
@@ -111,7 +111,7 @@ public class ExternalMetadataService : IExternalMetadataService
     public async Task FetchExternalDataTask()
     {
         // Find all Series that are eligible and limit
-        var ids = await _unitOfWork.ExternalSeriesMetadataRepository.GetSeriesThatNeedExternalMetadata(25);
+        var ids = await _unitOfWork.ExternalSeriesMetadataRepository.GetSeriesThatNeedExternalMetadata(25, false);
         if (ids.Count == 0) return;
 
         _logger.LogInformation("[Kavita+ Data Refresh] Started Refreshing {Count} series data from Kavita+", ids.Count);
@@ -133,6 +133,7 @@ public class ExternalMetadataService : IExternalMetadataService
     /// </summary>
     /// <param name="seriesId"></param>
     /// <param name="libraryType"></param>
+    /// <returns>If a successful match was made</returns>
     public async Task<bool> FetchSeriesMetadata(int seriesId, LibraryType libraryType)
     {
         if (!IsPlusEligible(libraryType)) return false;
@@ -150,8 +151,7 @@ public class ExternalMetadataService : IExternalMetadataService
         _logger.LogDebug("Prefetching Kavita+ data for Series {SeriesId}", seriesId);
 
         // Prefetch SeriesDetail data
-        await GetSeriesDetailPlus(seriesId, libraryType);
-        return true;
+        return await GetSeriesDetailPlus(seriesId, libraryType) != null;
     }
 
     public async Task<IList<MalStackDto>> GetStacksForUser(int userId)
@@ -303,7 +303,7 @@ public class ExternalMetadataService : IExternalMetadataService
     /// </summary>
     /// <param name="seriesId"></param>
     /// <param name="anilistId"></param>
-    public async Task FixSeriesMatch(int seriesId, int anilistId)
+    public async Task FixSeriesMatch(int seriesId, int anilistId, long? malId)
     {
         var series = await _unitOfWork.SeriesRepository.GetSeriesByIdAsync(seriesId, SeriesIncludes.Library);
         if (series == null) return;
@@ -317,7 +317,8 @@ public class ExternalMetadataService : IExternalMetadataService
         var metadata = await FetchExternalMetadataForSeries(seriesId, series.Library.Type, new PlusSeriesRequestDto()
         {
             AniListId = anilistId,
-            SeriesName = string.Empty // Required field
+            MalId = malId,
+            SeriesName = series.Name // Required field, not used since AniList/Mal Id are passed
         });
 
         if (metadata.Series == null)
@@ -329,6 +330,11 @@ public class ExternalMetadataService : IExternalMetadataService
         // Find all scrobble events and rewrite them to be the correct
         var events = await _unitOfWork.ScrobbleRepository.GetAllEventsForSeries(seriesId);
         _unitOfWork.ScrobbleRepository.Remove(events);
+
+        // Find all scrobble errors and remove them
+        var errors = await _unitOfWork.ScrobbleRepository.GetAllScrobbleErrorsForSeries(seriesId);
+        _unitOfWork.ScrobbleRepository.Remove(errors);
+
         await _unitOfWork.CommitAsync();
 
         // Regenerate all events for the series for all users
@@ -566,7 +572,7 @@ public class ExternalMetadataService : IExternalMetadataService
             return false;
         }
 
-        foreach (var relation in externalMetadataRelations)
+        foreach (var relation in externalMetadataRelations.Where(r => r.Relation != RelationKind.Parent))
         {
             var names = new [] {relation.SeriesName.PreferredTitle, relation.SeriesName.RomajiTitle, relation.SeriesName.EnglishTitle, relation.SeriesName.NativeTitle};
             var relatedSeries = await _unitOfWork.SeriesRepository.GetSeriesByAnyName(
