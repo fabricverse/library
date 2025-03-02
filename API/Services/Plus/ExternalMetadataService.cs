@@ -295,7 +295,16 @@ public class ExternalMetadataService : IExternalMetadataService
         if (data == null) return _defaultReturn;
 
         // Get from Kavita+ API the Full Series metadata with rec/rev and cache to ExternalMetadata tables
-        return await FetchExternalMetadataForSeries(seriesId, libraryType, data);
+        try
+        {
+            return await FetchExternalMetadataForSeries(seriesId, libraryType, data);
+        }
+        catch (KavitaException ex)
+        {
+            _logger.LogError(ex, "Rate limit hit fetching metadata");
+            // This can happen when we hit rate limit
+            return _defaultReturn;
+        }
     }
 
     /// <summary>
@@ -314,38 +323,49 @@ public class ExternalMetadataService : IExternalMetadataService
         _unitOfWork.SeriesRepository.Update(series);
 
         // Refetch metadata with a Direct lookup
-        var metadata = await FetchExternalMetadataForSeries(seriesId, series.Library.Type, new PlusSeriesRequestDto()
+        try
         {
-            AniListId = anilistId,
-            MalId = malId,
-            SeriesName = series.Name // Required field, not used since AniList/Mal Id are passed
-        });
+            var metadata = await FetchExternalMetadataForSeries(seriesId, series.Library.Type,
+                new PlusSeriesRequestDto()
+                {
+                    AniListId = anilistId,
+                    MalId = malId,
+                    SeriesName = series.Name // Required field, not used since AniList/Mal Id are passed
+                });
 
-        if (metadata.Series == null)
-        {
-            _logger.LogError("Unable to Match {SeriesName} with Kavita+ Series AniList Id: {AniListId}", series.Name, anilistId);
-            return;
+            if (metadata.Series == null)
+            {
+                _logger.LogError("Unable to Match {SeriesName} with Kavita+ Series AniList Id: {AniListId}",
+                    series.Name, anilistId);
+                return;
+            }
+
+            // Find all scrobble events and rewrite them to be the correct
+            var events = await _unitOfWork.ScrobbleRepository.GetAllEventsForSeries(seriesId);
+            _unitOfWork.ScrobbleRepository.Remove(events);
+
+            // Find all scrobble errors and remove them
+            var errors = await _unitOfWork.ScrobbleRepository.GetAllScrobbleErrorsForSeries(seriesId);
+            _unitOfWork.ScrobbleRepository.Remove(errors);
+
+            await _unitOfWork.CommitAsync();
+
+            // Regenerate all events for the series for all users
+            BackgroundJob.Enqueue(() => _scrobblingService.CreateEventsFromExistingHistoryForSeries(seriesId));
+
+            // Name can be null on Series even with a direct match
+            _logger.LogInformation("Matched {SeriesName} with Kavita+ Series {MatchSeriesName}", series.Name,
+                metadata.Series.Name);
         }
-
-        // Find all scrobble events and rewrite them to be the correct
-        var events = await _unitOfWork.ScrobbleRepository.GetAllEventsForSeries(seriesId);
-        _unitOfWork.ScrobbleRepository.Remove(events);
-
-        // Find all scrobble errors and remove them
-        var errors = await _unitOfWork.ScrobbleRepository.GetAllScrobbleErrorsForSeries(seriesId);
-        _unitOfWork.ScrobbleRepository.Remove(errors);
-
-        await _unitOfWork.CommitAsync();
-
-        // Regenerate all events for the series for all users
-        BackgroundJob.Enqueue(() => _scrobblingService.CreateEventsFromExistingHistoryForSeries(seriesId));
-
-        // Name can be null on Series even with a direct match
-        _logger.LogInformation("Matched {SeriesName} with Kavita+ Series {MatchSeriesName}", series.Name, metadata.Series.Name);
+        catch (KavitaException ex)
+        {
+            // We can't rethrow because Fix match is done in a background thread and Hangfire will requeue multiple times
+            _logger.LogInformation(ex, "Rate limit hit for matching {SeriesName} with Kavita+", series.Name);
+        }
     }
 
     /// <summary>
-    /// Sets a series to Dont Match and removes all previously cached
+    /// Sets a series to Don't Match and removes all previously cached
     /// </summary>
     /// <param name="seriesId"></param>
     public async Task UpdateSeriesDontMatch(int seriesId, bool dontMatch)
@@ -383,7 +403,10 @@ public class ExternalMetadataService : IExternalMetadataService
     {
 
         var series = await _unitOfWork.SeriesRepository.GetSeriesByIdAsync(seriesId, SeriesIncludes.Library);
-        if (series == null) return _defaultReturn;
+        if (series == null)
+        {
+            return _defaultReturn;
+        }
 
         try
         {
@@ -417,7 +440,7 @@ public class ExternalMetadataService : IExternalMetadataService
 
 
             // Recommendations
-            externalSeriesMetadata.ExternalRecommendations ??= new List<ExternalRecommendation>();
+            externalSeriesMetadata.ExternalRecommendations ??= [];
             var recs = await ProcessRecommendations(libraryType, result.Recommendations, externalSeriesMetadata);
 
             var extRatings = externalSeriesMetadata.ExternalRatings
@@ -437,11 +460,19 @@ public class ExternalMetadataService : IExternalMetadataService
             {
                 externalSeriesMetadata.Series = await _unitOfWork.SeriesRepository.GetSeriesByIdAsync(seriesId);
 
-                madeMetadataModification = await WriteExternalMetadataToSeries(result.Series, seriesId);
-                if (madeMetadataModification)
+                try
                 {
-                    _unitOfWork.SeriesRepository.Update(series);
+                    madeMetadataModification = await WriteExternalMetadataToSeries(result.Series, seriesId);
+                    if (madeMetadataModification)
+                    {
+                        _unitOfWork.SeriesRepository.Update(series);
+                    }
                 }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "There was an exception when trying to write Series metadata from Kavita+");
+                }
+
             }
 
             // WriteExternalMetadataToSeries will commit but not always
@@ -466,13 +497,27 @@ public class ExternalMetadataService : IExternalMetadataService
         }
         catch (FlurlHttpException ex)
         {
+            var errorMessage = await ex.GetResponseStringAsync();
+            // Trim quotes if the response is a JSON string
+            errorMessage = errorMessage.Trim('"');
+
             if (ex.StatusCode == 500)
             {
                 return _defaultReturn;
             }
+
+            if (ex.StatusCode == 400 && errorMessage.Contains("Too many Requests"))
+            {
+                throw new KavitaException("Too many requests, slow down");
+            }
         }
         catch (Exception ex)
         {
+            if (ex.Message.Contains("Too Many Requests"))
+            {
+                throw new KavitaException("Too many requests, slow down");
+            }
+
             _logger.LogError(ex, "Unable to fetch external series metadata from Kavita+");
         }
 
@@ -1079,10 +1124,18 @@ public class ExternalMetadataService : IExternalMetadataService
             var aniListId = ScrobblingService.ExtractId<int?>(staff.Url, ScrobblingService.AniListStaffWebsite);
             if (aniListId is null or <= 0) continue;
             var person = await _unitOfWork.PersonRepository.GetPersonByAniListId(aniListId.Value);
-            if (person != null && !string.IsNullOrEmpty(staff.ImageUrl) && string.IsNullOrEmpty(person.CoverImage))
+            if (person == null || string.IsNullOrEmpty(staff.ImageUrl) ||
+                !string.IsNullOrEmpty(person.CoverImage) || staff.ImageUrl.EndsWith("default.jpg")) continue;
+
+            try
             {
                 await _coverDbService.SetPersonCoverByUrl(person, staff.ImageUrl, false, true);
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "There was an exception saving cover image for Person {PersonName} ({PersonId})", person.Name, person.Id);
+            }
+
         }
     }
 
