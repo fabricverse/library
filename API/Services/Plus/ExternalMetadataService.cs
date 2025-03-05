@@ -68,9 +68,10 @@ public class ExternalMetadataService : IExternalMetadataService
         [LibraryType.Comic, LibraryType.Book, LibraryType.Image, LibraryType.ComicVine];
     private readonly SeriesDetailPlusDto _defaultReturn = new()
     {
+        Series =  null,
         Recommendations = null,
-        Ratings = ArraySegment<RatingDto>.Empty,
-        Reviews = ArraySegment<UserReviewDto>.Empty
+        Ratings = [],
+        Reviews = []
     };
     // Allow 50 requests per 24 hours
     private static readonly RateLimiter RateLimiter = new RateLimiter(50, TimeSpan.FromHours(24), false);
@@ -122,7 +123,7 @@ public class ExternalMetadataService : IExternalMetadataService
             var libraryType = libTypes[seriesId];
             var success = await FetchSeriesMetadata(seriesId, libraryType);
             if (success) count++;
-            await Task.Delay(1500);
+            await Task.Delay(6000); // Currently AL is degraded and has 30 requests/min, give a little padding since this is a background request
         }
         _logger.LogInformation("[Kavita+ Data Refresh] Finished Refreshing {Count} series data from Kavita+", count);
     }
@@ -147,8 +148,6 @@ public class ExternalMetadataService : IExternalMetadataService
             _logger.LogDebug("Rate Limit hit for Kavita+ prefetch");
             return false;
         }
-
-        _logger.LogDebug("Prefetching Kavita+ data for Series {SeriesId}", seriesId);
 
         // Prefetch SeriesDetail data
         return await GetSeriesDetailPlus(seriesId, libraryType) != null;
@@ -220,10 +219,12 @@ public class ExternalMetadataService : IExternalMetadataService
             MalId = potentialMalId ?? ScrobblingService.GetMalId(series),
         };
 
+        var token = (await _unitOfWork.UserRepository.GetDefaultAdminUser()).AniListAccessToken;
+
         try
         {
             var results = await (Configuration.KavitaPlusApiUrl + "/api/metadata/v2/match-series")
-                .WithKavitaPlusHeaders(license)
+                .WithKavitaPlusHeaders(license, token)
                 .PostJsonAsync(matchRequest)
                 .ReceiveJson<IList<ExternalSeriesMatchDto>>();
 
@@ -412,10 +413,41 @@ public class ExternalMetadataService : IExternalMetadataService
         {
             _logger.LogDebug("Fetching Kavita+ Series Detail data for {SeriesName}", string.IsNullOrEmpty(data.SeriesName) ? data.AniListId : data.SeriesName);
             var license = (await _unitOfWork.SettingsRepository.GetSettingAsync(ServerSettingKey.LicenseKey)).Value;
-            var result = await (Configuration.KavitaPlusApiUrl + "/api/metadata/v2/series-detail")
-                .WithKavitaPlusHeaders(license)
-                .PostJsonAsync(data)
-                .ReceiveJson<SeriesDetailPlusApiDto>(); // This returns an AniListSeries and Match returns ExternalSeriesDto
+            var token = (await _unitOfWork.UserRepository.GetDefaultAdminUser()).AniListAccessToken;
+            SeriesDetailPlusApiDto? result = null;
+
+            try
+            {
+                result = await (Configuration.KavitaPlusApiUrl + "/api/metadata/v2/series-detail")
+                    .WithKavitaPlusHeaders(license, token)
+                    .PostJsonAsync(data)
+                    .ReceiveJson<
+                        SeriesDetailPlusApiDto>(); // This returns an AniListSeries and Match returns ExternalSeriesDto
+            }
+            catch (FlurlHttpException ex)
+            {
+                var errorMessage = await ex.GetResponseStringAsync();
+                // Trim quotes if the response is a JSON string
+                errorMessage = errorMessage.Trim('"');
+
+                if (ex.StatusCode == 400 && errorMessage.Contains("Too many Requests"))
+                {
+                    _logger.LogInformation("Hit rate limit, will retry in 3 seconds");
+                    await Task.Delay(3000);
+
+                    result = await (Configuration.KavitaPlusApiUrl + "/api/metadata/v2/series-detail")
+                        .WithKavitaPlusHeaders(license, token)
+                        .PostJsonAsync(data)
+                        .ReceiveJson<
+                            SeriesDetailPlusApiDto>();
+                }
+            }
+
+            if (result == null)
+            {
+                _logger.LogInformation("Hit rate limit twice, try again later");
+                return _defaultReturn;
+            }
 
 
             // Clear out existing results
@@ -1353,6 +1385,15 @@ public class ExternalMetadataService : IExternalMetadataService
     }
 
 
+    /// <summary>
+    /// This is to get series information for the recommendation drawer on Kavita
+    /// </summary>
+    /// <remarks>This uses a different API that series detail</remarks>
+    /// <param name="license"></param>
+    /// <param name="aniListId"></param>
+    /// <param name="malId"></param>
+    /// <param name="seriesId"></param>
+    /// <returns></returns>
     private async Task<ExternalSeriesDetailDto?> GetSeriesDetail(string license, int? aniListId, long? malId, int? seriesId)
     {
         var payload = new ExternalMetadataIdsDto()
@@ -1385,8 +1426,9 @@ public class ExternalMetadataService : IExternalMetadataService
         }
         try
         {
+            var token = (await _unitOfWork.UserRepository.GetDefaultAdminUser()).AniListAccessToken;
             var ret =  await (Configuration.KavitaPlusApiUrl + "/api/metadata/v2/series-by-ids")
-                .WithKavitaPlusHeaders(license)
+                .WithKavitaPlusHeaders(license, token)
                 .PostJsonAsync(payload)
                 .ReceiveJson<ExternalSeriesDetailDto>();
 
