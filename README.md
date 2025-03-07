@@ -1,119 +1,102 @@
-﻿# [<img src="/Logo/kavita.svg" width="32" alt="">]() Kavita
-<div align="center">
+# Olla Academy Digital Library
 
-![new_github_preview_stills](https://github.com/user-attachments/assets/f016b34f-3c4c-4f07-8e72-12cd6f4e71ea)
+Welcome to the Olla Academy Digital Library project! This initiative aims to provide accessible and engaging educational resources to children, especially those in underserved communities.
 
-Kavita is a fast, feature rich, cross-platform reading server. Built with a focus for being a full solution for all your reading needs. Set up your own server and share
-your reading collection with your friends and family!
+## About Olla Academy
 
-[![Release](https://img.shields.io/github/release/Kareadita/Kavita.svg?style=flat&maxAge=3600)](https://github.com/Kareadita/Kavita/releases)
-[![License](https://img.shields.io/badge/license-GPLv3-blue.svg?style=flat)](https://github.com/Kareadita/Kavita/blob/master/LICENSE)
-[![Downloads](https://img.shields.io/github/downloads/Kareadita/Kavita/total.svg?style=flat)](https://github.com/Kareadita/Kavita/releases)
-[![Docker Pulls](https://img.shields.io/docker/pulls/jvmilazz0/kavita.svg)](https://hub.docker.com/r/jvmilazz0/kavita)
-[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=Kareadita_Kavita&metric=sqale_rating)](https://sonarcloud.io/dashboard?id=Kareadita_Kavita)
-[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=Kareadita_Kavita&metric=security_rating)](https://sonarcloud.io/dashboard?id=Kareadita_Kavita)
-[![Backers on Open Collective](https://opencollective.com/kavita/backers/badge.svg)](#backers)
-[![Sponsors on Open Collective](https://opencollective.com/kavita/sponsors/badge.svg)](#sponsors)
-<a href="https://hosted.weblate.org/engage/kavita/">
-<img src="https://hosted.weblate.org/widgets/kavita/-/ui/svg-badge.svg" alt="Translation status" />
-</a>
-<img src="https://img.shields.io/endpoint?url=https://stats.kavitareader.com/api/ui/shield-badge"/>
-</div>
+Olla Academy is dedicated to bridging the educational gap by offering a user-friendly and scalable digital library. Our platform provides a diverse collection of digital books, learning materials, and interactive content. By focusing on accessibility, we strive to ensure that every child has the opportunity to learn and grow.
 
+## Project Goals
 
-## What Kavita Provides
-- Serve up Manga/Webtoons/Comics (cbr, cbz, zip/rar/rar5, 7zip, raw images) and Books (epub, pdf)
-- First class responsive readers that work great on any device (phone, tablet, desktop)
-- Customizable theming support: [Theme Repo](https://github.com/Kareadita/Themes) and [Documentation](https://wiki.kavitareader.com/guides/themes)
-- External metadata integration and scrobbling for read status, ratings, and reviews (available via [Kavita+](https://wiki.kavitareader.com/kavita+)) 
-- Rich Metadata support with filtering and searching
-- Ways to group reading material: Collections, Reading Lists (CBL Import), Want to Read
-- Ability to manage users with rich Role-based management for age restrictions, abilities within the app, etc
-- Rich web readers supporting webtoon, continuous reading mode (continue without leaving the reader), virtual pages (epub), etc
-- Ability to customize your dashboard and side nav with smart filters, custom order and visibility toggles
-- Full Localization Support
-- Ability to download metadata (available via [Kavita+](https://wiki.kavitareader.com/kavita+))
+* **Accessibility:** Provide high-quality educational resources to children, regardless of their location or internet connectivity.
+* **Offline Functionality:** Enable continuous learning in low-connectivity areas through offline access.
+* **Community Collaboration:** Foster an open-source environment where educators, institutions, and developers can contribute and improve the platform.
+* **Scalability:** Build a robust and scalable system that can accommodate a growing library and user base.
+* **Engaging Content:** Curate and create interactive and engaging content that sparks curiosity and fosters a love for learning.
 
+## Features
 
-## Support
-[![Discord](https://img.shields.io/badge/discord-chat-7289DA.svg?maxAge=60)](https://discord.gg/eczRp9eeem)
-[![GitHub - Bugs Only](https://img.shields.io/badge/github-issues-red.svg?maxAge=60)](https://github.com/Kareadita/Kavita/issues)
+* Wide range of digital books and educational materials.
+* User-friendly interface designed for children.
+* Online and (soon) offline access.
+* Interactive learning content.
+* Open-source platform for community contributions.
 
-## Demo
-If you want to try out Kavita, a demo is available:
-[https://demo.kavitareader.com/](https://demo.kavitareader.com/)
-```
-Username: demouser
-Password: Demouser64
-```
+## Technology
 
-## Setup
-The easiest way to get started is to visit our Wiki which has up-to-date information on a variety of
-install methods and platforms.
-[https://wiki.kavitareader.com/getting-started](https://wiki.kavitareader.com/getting-started)
+This project builds upon the foundation of a robust and well-regarded library management system, providing a solid base for Olla Academy's educational goals.
 
-## Feature Requests
-Got a great idea? Throw it up on [Discussions](https://github.com/Kareadita/Kavita/discussions/2529) or vote on another idea. Many great features in Kavita are driven by our community. 
+## Installation
 
-## Notice
-Kavita is being actively developed and should be considered beta software until the 1.0 release.
-Kavita may be subject to changes in how the platform functions as it is being built out toward the
-vision. You may lose data and have to restart. The Kavita team strives to avoid any data loss.
+The Olla Academy Digital Library can be easily deployed using Docker. Here's a quick guide to get you started:
 
-## Donate
-If you like Kavita, have gotten good use out of it, or feel like you want to say thanks with a few bucks, feel free to donate. Money will go towards
-expenses related to Kavita. Back us through [OpenCollective](https://opencollective.com/Kavita#backer). You can also use [Paypal](https://www.paypal.com/paypalme/majora2007?locale.x=en_US), however your name will not show below. Kavita+ is also an 
-option which provides funding, and you get a benefit.
+**Prerequisites:**
 
-## Kavita+
-[Kavita+](https://wiki.kavitareader.com/kavita+) is a paid subscription that offers premium features that otherwise wouldn't be feasible to include in Kavita. It is ran and operated by majora2007, the creator and developer of Kavita.
+* Docker and Docker Compose installed on your system.
 
-If you are interested, you can use the promo code `FIRSTTIME` for your initial signup for a 50% discount on the first month (2$). This can be thought of as donating to Kavita's development and getting some sweet features out of it.
+**Using Docker Compose (Recommended):**
 
-**If you already contribute via OpenCollective, please reach out to majora2007 for a provisioned license.**
+1.  **Create a `docker-compose.yml` file:**
 
-## Localization
-Thank you to [Weblate](https://hosted.weblate.org/engage/kavita/) who hosts our localization infrastructure pro bono. If you want to see Kavita in your language, please help us localize.
+    ```yaml
+    version: "3.8"
+    services:
+      olla-library:
+        image: fabricverse/library:latest # Or your forked image.
+        container_name: olla-library
+        ports:
+          - "5000:5000"
+        volumes:
+          - /your/library/content:/library # Replace with your library content directory
+          - /your/config/directory:/library/config # Replace with your configuration directory
+        environment:
+          - TZ=Your/Timezone # Replace with your timezone (e.g., Africa/Lusaka)
+          - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true
+        restart: unless-stopped
+    ```
 
-<a href="https://hosted.weblate.org/engage/kavita/">
-<img src="https://hosted.weblate.org/widget/kavita/horizontal-auto.svg" alt="Translation status" />
-</a>
+    **Understanding Docker Compose Volumes:**
 
-## PikaPods
-If you are looking to try your hand at self-hosting but lack the machine, [PikaPods](https://www.pikapods.com/pods?run=kavita) is a great service that 
-allows you to easily spin up a server. 20% of app revenues are contributed back to Kavita via OpenCollective.
+    * The key to configuring your library is understanding Docker volumes. In the `volumes` section, the syntax is `host_path:container_path`.
+    * `/your/library/content:/library` means the directory on your computer (`/your/library/content`) containing your digital books and learning materials will be accessible inside the container at `/library`.
+    * `/your/config/directory:/library/config` maps your configuration folder. Ensure the configuration folder has proper read write permissions.
+    * **Important:** Replace `/your/library/content` and `/your/config/directory` with the actual paths on your host machine.
+
+2.  **Start the container:**
+
+    ```bash
+    docker-compose up -d
+    ```
+
+3.  **Access the library:**
+
+    * Open your web browser and navigate to `http://localhost:5000`.
 
 
-## Contributors
+## Contributing
 
-This project exists thanks to all the people who contribute and downstream library maintainers. [Contribute](CONTRIBUTING.md).
-<a href="https://github.com/Kareadita/Kavita/graphs/contributors">
-<img src="https://opencollective.com/kavita/contributors.svg?width=890&button=false&avatarHeight=42" />
-</a>
+We welcome contributions from the community! Whether you're a developer, educator, or content creator, your expertise can help us improve the Olla Academy Digital Library.
 
+To contribute:
 
-## Backers
+1.  Fork the repository.
+2.  Create a new branch for your feature or bug fix.
+3.  Submit a pull request.
 
-Thank you to all our backers! 🙏 [Become a backer](https://opencollective.com/Kavita#backer)
+## Future Development
 
-<img src="https://opencollective.com/kavita/backers.svg?width=890&avatarHeight=42"></a>
+We are continually working to improve the Olla Academy Digital Library. Future development plans include:
 
-## Sponsors
+* Enhanced offline functionality.
+* Expanded content library.
+* Improved user interface and experience.
+* Integration of more interactive learning tools.
+* Improved search and filtering.
 
-Support this project by becoming a sponsor. Your logo will show up here with a link to your website. [Become a sponsor](https://opencollective.com/Kavita#sponsor)
+## Acknowledgements
 
-<img src="https://opencollective.com/Kavita/sponsors.svg?width=890"></a>
+This project leverages concepts and structures found in existing open source library management projects.
 
-## Mega Sponsors
-<img src="https://opencollective.com/Kavita/tiers/mega-sponsor.svg?width=890"></a>
+## License
 
-## JetBrains
-Thank you to [<img src="/Logo/jetbrains.svg" alt="" width="32"> JetBrains](http://www.jetbrains.com/) for providing us with free licenses to their great tools.
-
-* [<img src="/Logo/rider.svg" alt="" width="32"> Rider](http://www.jetbrains.com/rider/)
-
-### License
-
-* [GNU GPL v3](http://www.gnu.org/licenses/gpl.html)
-* Copyright 2020-2024
-
+This project is licensed under the GPL3 License.
