@@ -24,7 +24,7 @@ Olla Academy is dedicated to bridging the educational gap by offering a user-fri
 
 ## Technology
 
-This project builds upon the foundation of a robust and well-regarded library management system, providing a solid base for Olla Academy's educational goals.
+This project builds upon the foundation of a robust and well-regarded project called Kavita, providing a solid base for Olla Academy's initial goals.
 
 ## Installation
 
